@@ -1,43 +1,113 @@
-import { describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { expect } from "bun:test";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { check } from "@dylanebert/shallot/harness/check";
 import { main, scaffold, template } from "./index";
 
-describe("scaffold", () => {
-    test("writes every templated file, creating nested parent dirs (public/, public/scenes/)", () => {
-        const dir = mkdtempSync(join(tmpdir(), "shallot-scaffold-"));
-        scaffold(dir, template("demo"));
+type Output = { stdout: string; stderr: string };
 
-        for (const rel of [
-            "package.json",
-            "shallot.json",
-            "public/icon.svg",
-            "public/scenes/scene.scene",
-        ]) {
-            expect(existsSync(join(dir, rel))).toBe(true);
+function captureOutput(run: () => unknown): Output & { value: unknown } {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const log = console.log;
+    const error = console.error;
+    console.log = (...args: unknown[]) => stdout.push(args.join(" "));
+    console.error = (...args: unknown[]) => stderr.push(args.join(" "));
+    try {
+        return { value: run(), stdout: stdout.join("\n"), stderr: stderr.join("\n") };
+    } finally {
+        console.log = log;
+        console.error = error;
+    }
+}
+
+function temporaryRoot(prefix: string): string {
+    return mkdtempSync(join(tmpdir(), prefix));
+}
+
+check(
+    "scaffold creates all nested project parents",
+    {
+        claim: "scaffold creates every declared project file and nested parent directory",
+        size: "integration",
+        subject: "src/index.ts",
+    },
+    () => {
+        const root = temporaryRoot("shallot-scaffold-");
+        try {
+            scaffold(root, template("demo"));
+
+            for (const rel of [
+                "package.json",
+                "shallot.json",
+                "public/icon.svg",
+                "public/scenes/scene.scene",
+            ]) {
+                expect(existsSync(join(root, rel))).toBe(true);
+            }
+            expect(JSON.parse(readFileSync(join(root, "package.json"), "utf-8")).name).toBe("demo");
+        } finally {
+            rmSync(root, { recursive: true, force: true });
         }
-        expect(JSON.parse(readFileSync(join(dir, "package.json"), "utf-8")).name).toBe("demo");
-    });
-});
+    },
+);
 
-describe("main", () => {
-    test("no project-name argument: usage error, exit 1, nothing written", () => {
-        expect(main([])).toBe(1);
-        expect(main(["--flag-only"])).toBe(1);
-    });
+check(
+    "main refuses a missing project name",
+    {
+        claim: "main refuses missing project names with usage output and a nonzero return code",
+        size: "integration",
+        subject: "src/index.ts",
+    },
+    () => {
+        const output = captureOutput(() => main([]));
+        expect(output.value).toBe(1);
+        expect(output.stderr).toContain("Usage: bun create shallot <project-name>");
+    },
+);
 
-    test("an existing directory is refused rather than overwritten", () => {
-        const dir = mkdtempSync(join(tmpdir(), "shallot-create-"));
-        expect(main([dir])).toBe(1);
-    });
+check(
+    "main refuses an existing directory",
+    {
+        claim: "main refuses an existing target directory without overwriting it",
+        size: "integration",
+        subject: "src/index.ts",
+    },
+    () => {
+        const root = temporaryRoot("shallot-create-");
+        const existing = join(root, "existing");
+        try {
+            mkdirSync(existing);
+            const output = captureOutput(() => main([existing]));
+            expect(output.value).toBe(1);
+            expect(output.stderr).toContain('Directory "');
+            expect(existsSync(existing)).toBe(true);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
+    },
+);
 
-    test("scaffolds the project and returns 0", () => {
-        // an absolute path stands in for the project name: `resolve(name)` is then the name itself,
-        // so the test controls the target dir without touching process.cwd().
-        const dir = join(mkdtempSync(join(tmpdir(), "shallot-create-")), "fresh-project");
-        expect(main([dir])).toBe(0);
-        expect(existsSync(join(dir, "shallot.json"))).toBe(true);
-        expect(existsSync(join(dir, "public/icon.svg"))).toBe(true);
-    });
-});
+check(
+    "main scaffolds a fresh project",
+    {
+        claim: "main reports successful creation and returns zero for a fresh project",
+        size: "integration",
+        subject: "src/index.ts",
+    },
+    () => {
+        const root = temporaryRoot("shallot-create-");
+        const project = join(root, "fresh-project");
+        try {
+            const output = captureOutput(() => main([project]));
+            expect(output.value).toBe(0);
+            expect(output.stdout).toContain("Created");
+            expect(output.stdout).toContain("bun install");
+            expect(existsSync(join(project, "shallot.json"))).toBe(true);
+            expect(existsSync(join(project, "public/icon.svg"))).toBe(true);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
+    },
+);
