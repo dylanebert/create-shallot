@@ -14,10 +14,24 @@ The emitted `package.json` pins `@dylanebert/shallot` to the engine release this
 ## Developing
 
 ```bash
-bun install
-bun run check   # tsc + Biome
-bun run test    # scaffold unit tests
+bun install --frozen-lockfile
+bun run list
+bun run workflow
+bun run check
+bun run test
+bun run test:integration -- --base <parent> --diff <commit>
 ```
+
+`list` reports the complete declared surface. `workflow` regenerates the hosted
+`.github/workflows/test-surface.yml`; it must leave the working tree clean. `test` is the
+bounded native unit command (this scaffold's four checks are integrations), while
+`test:integration` selects checks whose `src/index.ts` subject changed between the supplied
+commits. The generated workflow runs install, check, test, and integration selection without
+knowing anything about this package's product domain.
+
+The carrier is a dev-only exact Git pin until Shallot 0.10 is released. The public preload is
+loaded through `bunfig.toml`, and the package scripts above are the native carrier command
+surface; no engine checkout is needed after the frozen install.
 
 ### Against a local engine
 
@@ -39,7 +53,7 @@ Link after installing: a later `bun install` puts the published engine back. `bu
 
 ## Releasing
 
-Bump `version` in `package.json`, commit, and push a matching `v<version>` tag. The release workflow checks, tests and publishes with the `NPM_TOKEN` repository secret.
+Bump `version` in `package.json`, commit, and push a matching `v<version>` tag. The release workflow runs the native `bun run check` and `bun run test` gates before publishing. The integration surface remains a separate explicitly selected gate.
 
 ## License
 

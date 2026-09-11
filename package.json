@@ -21,11 +21,15 @@
     "homepage": "https://github.com/dylanebert/create-shallot",
     "bugs": "https://github.com/dylanebert/create-shallot/issues",
     "scripts": {
-        "check": "tsc --noEmit && biome check",
-        "test": "bun test src"
+        "check": "tsc --noEmit && biome check && shallot check",
+        "list": "shallot list",
+        "workflow": "shallot workflow",
+        "test": "shallot test",
+        "test:integration": "shallot test:integration"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.13",
+        "@dylanebert/shallot": "github:dylanebert/shallot#1ad4d7a500c13b4a3c0422a3b09584834d5e626d",
         "@types/bun": "latest",
         "typescript": "^7.0.2"
     }
