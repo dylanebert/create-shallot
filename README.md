@@ -19,13 +19,13 @@ bun run list
 bun run workflow
 bun run check
 bun run test
-bun run test:integration -- --base <parent> --diff <commit>
+bun run test -- --integration -- --base <parent> --diff <commit>
 ```
 
 `list` reports the complete declared surface. `workflow` regenerates the hosted
 `.github/workflows/test-surface.yml`; it must leave the working tree clean. `test` is the
 bounded native unit command (this scaffold's four checks are integrations), while
-`test:integration` selects checks whose `src/index.ts` subject changed between the supplied
+`test -- --integration` selects checks whose `src/index.ts` subject changed between the supplied
 commits. The generated workflow runs install, check, test, and integration selection without
 knowing anything about this package's product domain.
 
