@@ -3,10 +3,11 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 
-// the published engine release this scaffold was checked against. caret on 0.x admits patches only,
-// so a stale scaffold can't install a newer minor whose peer ranges the typegpu/unplugin-typegpu pins
-// no longer satisfy. bump it by hand when a new engine minor ships.
-const shallotRange = "^0.9.5";
+// The generated application stays on the stable published contract until a release exists. The
+// scaffold itself carries the qualified source candidate in its devDependencies (see package.json).
+const publishedShallotRange = "^0.9.5";
+export const QUALIFIED_SHALLOT_CANDIDATE =
+    "github:dylanebert/shallot#70770cfc34d82fdd19cb705d8753bb6f093748d6";
 
 /**
  * the project files keyed by relative path, with the project name interpolated. the single source of
@@ -21,6 +22,7 @@ export function template(name: string): Record<string, string> {
     return {
         "public/icon.svg": ICON,
         ".gitignore": "node_modules/\ndist/\nbuild/\n",
+        ".bun-version": "1.4.2\n",
         "package.json":
             JSON.stringify(
                 {
@@ -28,8 +30,21 @@ export function template(name: string): Record<string, string> {
                     version: "0.0.0",
                     private: true,
                     type: "module",
-                    dependencies: { "@dylanebert/shallot": shallotRange, typegpu: "~0.12.5" },
-                    devDependencies: { "unplugin-typegpu": "~0.12.3", typescript: "^7.0.2" },
+                    packageManager: "bun@1.4.2",
+                    engines: { bun: ">=1.4.2" },
+                    scripts: {
+                        build: "shallot build",
+                        check: "tsc --noEmit",
+                    },
+                    dependencies: {
+                        "@dylanebert/shallot": publishedShallotRange,
+                        typegpu: "~0.12.5",
+                    },
+                    devDependencies: {
+                        "@types/node": "^26.2.0",
+                        "@webgpu/types": "^0.1.72",
+                        typescript: "^7.0.2",
+                    },
                 },
                 null,
                 2,
@@ -42,7 +57,7 @@ export function template(name: string): Record<string, string> {
                         module: "ESNext",
                         moduleResolution: "bundler",
                         lib: ["ESNext", "DOM", "DOM.Iterable"],
-                        types: ["@webgpu/types", "node"],
+                        types: ["@webgpu/types", "node", "vite/client"],
                         strict: true,
                         noEmit: true,
                         skipLibCheck: true,
@@ -87,35 +102,51 @@ const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 14" width=
 
 const readme = (name: string) => `# ${name}
 
-A shallot project.
+A Shallot project.
 
 ## Develop
 
 \`\`\`bash
 bun install
-bunx shallot dev
+bun run build
 \`\`\`
 
-\`bun install\` fetches the engine. \`bunx shallot dev\` runs the project with hot
-reload. Edit \`src/spin.ts\` (a plugin) and \`shallot.json\` (the manifest: scene +
-plugin enablement) in your IDE.
+\`bun install\` fetches the stable published engine. \`bun run build\` invokes the
+installed Shallot carrier. Edit \`src/spin.ts\` (a plugin) and \`shallot.json\` (the
+manifest: scene + plugin enablement) in your IDE. The generated project keeps its
+stable dependency in the manifest; candidate work enters only through the local
+no-save link described in \`AGENTS.md\`.
 
 ## Ship
 
 \`\`\`bash
-bunx shallot build
+bun run build
 \`\`\`
 
 Builds a web bundle to \`dist/\`. Native targets
 (\`--target windows|mac|linux\`) download a prebuilt release shell when one exists
 for your installed version, and otherwise fall back to compiling from source,
-which needs the Rust toolchain and target system dependencies; see the repo
-README for the per-target table.
+which needs the Rust toolchain and target system dependencies; see the installed
+engine's README for the per-target table.
 `;
 
 const agents = (name: string) => `# ${name}
 
 A WebGPU game built on \`@dylanebert/shallot\`.
+
+## Package contract
+
+Admission is Bun 1.4.2 from \`.bun-version\` and \`packageManager\`. The persisted
+application identity is the stable published \`@dylanebert/shallot@^0.9.5\` range and
+its frozen lock resolution. The scaffold's unreleased candidate is not written into
+the generated application.
+
+For local co-development only, record the producer and consumer HEAD/dirt plus the
+consumer manifest and lock hashes. In the Shallot checkout run \`bun link\`; here run
+\`bun link @dylanebert/shallot --no-save\`. Prove the installed package realpath is
+the producer. Exit with \`bun install --force --frozen-lockfile --cache-dir <new-empty-cache>\`,
+prove the stable installed identity and that no producer symlink or local-directory
+residue remains, then rerun the focused gate. A link never changes the manifest or lock.
 
 ## Layout
 
@@ -123,32 +154,23 @@ A WebGPU game built on \`@dylanebert/shallot\`.
 - \`public/scenes/*.scene\` — the world as declarative XML (each \`<a>\` is an entity, each attribute a component)
 - \`src/*.ts\` — your plugins (a plugin is data: components + systems)
 
-## Build, run, verify
+## Build and inspect
 
 \`\`\`bash
-bunx tsc --noEmit                                # typecheck — run after every change
-bunx shallot dev                                 # run with hot reload while you work
-bunx shallot build                               # ship it (web bundle to dist/)
-bunx shallot verify                              # prove it: boot headless, check it renders, exit 0/nonzero
+bun run check                                   # independent project typecheck
+bun run build                                   # installed Shallot carrier, web bundle to dist/
 \`\`\`
 
-\`shallot verify\` is the verification step — a self-terminating gate that boots the project in a real
-headless browser, waits for a settled frame, and exits nonzero on failure. Nothing left running. \`--json\`
-emits the full result; \`--screenshot <path>\` saves a frame. It drives Playwright, an optional one-time
-install: \`bun add -d playwright && bunx playwright install chromium\` (exit code 3 names this command if
-it's missing). By default it checks the scene rendered; to assert your own pass/fail (entity poses,
-physics state) install \`window.__harness\` via \`installHarness\` from \`@dylanebert/shallot/harness\` — in a
-manifest project like this one, from a plugin's \`initialize(state)\` hook (the engine's AGENTS.md has the
-worked example).
+These are the product gates. The build invokes the installed Shallot bin and neither
+gate reads an engine checkout or a private engine script. If a future rendered claim
+needs a browser witness, add the public capture contract and an admitted integration
+row rather than inventing a project-local transport.
 
 ## Engine reference
 
 The engine is the documentation. Read \`node_modules/@dylanebert/shallot/AGENTS.md\` for the full
-contract (ECS, plugins, scenes, GPU, UI, and the \`shallot verify\` harness), and every public export
-carries JSDoc. The examples index lives at \`node_modules/@dylanebert/shallot/examples/AGENTS.md\` — grep
-it for the problem you have, then read that recipe's source, before writing a pattern from scratch.
-\`bunx shallot recipe <name> [dir]\` copies a recipe out of the installed package into a runnable project
-(bare: lists them).
+contract (ECS, plugins, scenes, GPU, UI), and every public export carries JSDoc. Read the installed
+examples index before writing a pattern from scratch.
 
 ## Conventions
 
@@ -172,7 +194,7 @@ const MANIFEST = `{
 `;
 
 // Ambient types + the tsconfig anchor. `include: ["src"]` needs at least one matching file, so this
-// keeps `bunx tsc --noEmit` green (no TS18003) even when spin.ts is deleted for a static scene. It's
+// keeps the generated `bun run check` green (no TS18003) even when spin.ts is deleted for a static scene. It's
 // infrastructure, not demo content — don't delete it.
 const ENV = `/// <reference types="@webgpu/types" />
 `;
@@ -234,7 +256,7 @@ export function main(argv: string[]): number {
     console.log("Next steps:");
     console.log(`  cd ${name}`);
     console.log("  bun install");
-    console.log("  bunx shallot dev");
+    console.log("  bun run build");
     return 0;
 }
 
