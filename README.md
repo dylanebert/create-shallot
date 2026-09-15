@@ -10,7 +10,7 @@ bun run build
 ```
 
 The scaffold's own carrier is the qualified source candidate
-`github:dylanebert/shallot#70770cfc34d82fdd19cb705d8753bb6f093748d6` in its devDependencies.
+`github:dylanebert/shallot#0664218f465224397b80aeb604b51178ac71cfb2` in its devDependencies.
 The emitted application's normal persisted dependency remains the stable published
 `@dylanebert/shallot@^0.9.5` range until that candidate is released.
 

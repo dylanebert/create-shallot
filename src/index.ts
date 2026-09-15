@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "path";
 // scaffold itself carries the qualified source candidate in its devDependencies (see package.json).
 const publishedShallotRange = "^0.9.5";
 export const QUALIFIED_SHALLOT_CANDIDATE =
-    "github:dylanebert/shallot#70770cfc34d82fdd19cb705d8753bb6f093748d6";
+    "github:dylanebert/shallot#0664218f465224397b80aeb604b51178ac71cfb2";
 
 /**
  * the project files keyed by relative path, with the project name interpolated. the single source of
