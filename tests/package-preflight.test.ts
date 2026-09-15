@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { check } from "@dylanebert/shallot/harness/check";
 import { QUALIFIED_SHALLOT_CANDIDATE } from "../src/index";
 
-const CANDIDATE_SHA = "70770cfc34d82fdd19cb705d8753bb6f093748d6";
+const CANDIDATE_SHA = "0664218f465224397b80aeb604b51178ac71cfb2";
 const STABLE_RANGE = "^0.9.5";
 
 type CommandResult = { code: number; stdout: string; stderr: string };

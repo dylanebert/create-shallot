@@ -2,7 +2,7 @@
 
 This repository publishes the `bun create shallot` scaffold. Admission is Bun 1.4.2 from
 `.bun-version` and `packageManager`. Its own installed Shallot carrier is the qualified
-source candidate `github:dylanebert/shallot#70770cfc34d82fdd19cb705d8753bb6f093748d6`,
+source candidate `github:dylanebert/shallot#0664218f465224397b80aeb604b51178ac71cfb2`,
 recorded in `devDependencies` and `bun.lock`. The generated application's persisted
 identity is deliberately separate: `@dylanebert/shallot@^0.9.5` is its stable published
 range until the candidate is released.
