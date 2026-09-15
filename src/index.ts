@@ -21,7 +21,7 @@ export const QUALIFIED_SHALLOT_CANDIDATE =
 export function template(name: string): Record<string, string> {
     return {
         "public/icon.svg": ICON,
-        ".gitignore": "node_modules/\ndist/\nbuild/\n",
+        ".gitignore": "node_modules/\ndist/\nbuild/\n.artifacts/\n",
         ".bun-version": "1.4.2\n",
         "package.json":
             JSON.stringify(
