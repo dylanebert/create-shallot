@@ -30,8 +30,6 @@ check(
     "scaffold creates all nested project parents",
     {
         claim: "scaffold creates every declared project file and nested parent directory",
-        size: "integration",
-        subject: "src/index.ts",
     },
     () => {
         const root = temporaryRoot("shallot-scaffold-");
@@ -57,8 +55,6 @@ check(
     "main refuses a missing project name",
     {
         claim: "main refuses missing project names with usage output and a nonzero return code",
-        size: "integration",
-        subject: "src/index.ts",
     },
     () => {
         const output = captureOutput(() => main([]));
@@ -71,8 +67,6 @@ check(
     "main refuses an existing directory",
     {
         claim: "main refuses an existing target directory without overwriting it",
-        size: "integration",
-        subject: "src/index.ts",
     },
     () => {
         const root = temporaryRoot("shallot-create-");
@@ -93,8 +87,6 @@ check(
     "main scaffolds a fresh project",
     {
         claim: "main reports successful creation and returns zero for a fresh project",
-        size: "integration",
-        subject: "src/index.ts",
     },
     () => {
         const root = temporaryRoot("shallot-create-");
