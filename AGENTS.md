@@ -1,6 +1,6 @@
 This repository publishes the `bun create shallot` scaffold.
 
-Checks: `bun run check` and `bun run test`. `bun run list` and `bun run workflow` also run through the installed `shallot` bin, which reaches no engine checkout or private engine script.
+Checks: `bun run check` and `bun run test`.
 
 Package states: https://github.com/dylanebert/shallot/blob/main/CONTRIBUTING.md#dependencies
 
