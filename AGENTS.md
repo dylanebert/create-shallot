@@ -1,8 +1,8 @@
 # create-shallot consumer contract
 
-This repository publishes the `bun create shallot` scaffold. Admission is Bun 1.4.2 from
-`.bun-version` and `packageManager`. Its own installed Shallot carrier is the qualified
-source candidate `github:dylanebert/shallot#0664218f465224397b80aeb604b51178ac71cfb2`,
+This repository publishes the `bun create shallot` scaffold.
+Its own installed Shallot carrier is the qualified
+source candidate,
 recorded in `devDependencies` and `bun.lock`. The generated application's persisted
 identity is deliberately separate: `@dylanebert/shallot@^0.9.5` is its stable published
 range until the candidate is released.
