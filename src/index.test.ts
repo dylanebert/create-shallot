@@ -52,6 +52,19 @@ check(
 );
 
 check(
+    "generated agent guidance points at consumer references",
+    {
+        claim: "generated project context points at the installed README and examples index, not contributor instructions",
+    },
+    () => {
+        const agents = template("demo")["AGENTS.md"];
+        expect(agents).toContain("node_modules/@dylanebert/shallot/README.md");
+        expect(agents).toContain("node_modules/@dylanebert/shallot/examples/AGENTS.md");
+        expect(agents).not.toContain("node_modules/@dylanebert/shallot/AGENTS.md");
+    },
+);
+
+check(
     "main refuses a missing project name",
     {
         claim: "main refuses missing project names with usage output and a nonzero return code",

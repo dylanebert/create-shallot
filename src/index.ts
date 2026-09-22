@@ -16,7 +16,7 @@ export const QUALIFIED_SHALLOT_CANDIDATE =
  * the project is pure data — a `shallot.json` manifest + plugin modules + `public/`, no vite
  * boilerplate. the CLI provides every harness over it: `shallot dev` runs it standalone with hot
  * reload, `shallot build` ships it (web + native targets). the emitted AGENTS.md points an agent at
- * the installed engine's contract, and CLAUDE.md imports it.
+ * the installed engine's consumer reference, and CLAUDE.md imports it.
  */
 export function template(name: string): Record<string, string> {
     return {
@@ -168,9 +168,9 @@ row rather than inventing a project-local transport.
 
 ## Engine reference
 
-The engine is the documentation. Read \`node_modules/@dylanebert/shallot/AGENTS.md\` for the full
-contract (ECS, plugins, scenes, GPU, UI), and every public export carries JSDoc. Read the installed
-examples index before writing a pattern from scratch.
+The engine's README is the consumer reference. Read \`node_modules/@dylanebert/shallot/README.md\` for
+setup and CLI guidance; every public export carries JSDoc. Read
+\`node_modules/@dylanebert/shallot/examples/AGENTS.md\` before writing a pattern from scratch.
 
 ## Conventions
 
