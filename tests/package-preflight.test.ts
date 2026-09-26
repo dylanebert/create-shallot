@@ -1,9 +1,10 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { check } from "@dylanebert/shallot/harness/check";
 import { QUALIFIED_SHALLOT_CANDIDATE } from "../src/index";
 
-const CANDIDATE_SHA = "0664218f465224397b80aeb604b51178ac71cfb2";
+const CANDIDATE_SHA = "69f12a06438d8ce80aa1ab9e4b34de5b58820e15";
 const STABLE_RANGE = "^0.9.5";
 
 type CommandResult = { code: number; stdout: string; stderr: string };
@@ -58,7 +59,6 @@ check(
             "README.md",
             "shallot.json",
             "src/index.ts",
-            "tests/package-preflight.test.ts",
             ".github/workflows/test-surface.yml",
         ],
         budget: 20000,
@@ -86,11 +86,11 @@ check(
             throw new Error("scaffold does not admit its exact Bun version");
         }
 
-        const packDir = mkdtempSync("/tmp/create-shallot-pack-");
-        const creatorDir = mkdtempSync("/tmp/create-shallot-creator-");
+        const packDir = mkdtempSync(join(tmpdir(), "create-shallot-pack-"));
+        const creatorDir = mkdtempSync(join(tmpdir(), "create-shallot-creator-"));
         const appDir = resolve(creatorDir, "generated-app");
-        const creatorCache = mkdtempSync("/tmp/create-shallot-cache-");
-        const frozenCache = mkdtempSync("/tmp/create-shallot-frozen-cache-");
+        const creatorCache = mkdtempSync(join(tmpdir(), "create-shallot-cache-"));
+        const frozenCache = mkdtempSync(join(tmpdir(), "create-shallot-frozen-cache-"));
         try {
             const packed = runChecked(
                 [process.execPath, "pm", "pack", "--destination", packDir, "--quiet"],

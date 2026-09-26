@@ -7,8 +7,7 @@ bun install --frozen-lockfile
 bun run check
 bun run test
 bun run test -- --integration --base <ref> --diff <ref>   # tests whose subject changed
-bun run list
-bun run workflow   # regenerate the hosted surface; must leave the tree clean
+shallot test --list
 ```
 
 - The scaffold never imports the engine; a scaffolded project does. The scaffold's own dev dependency is a full-SHA Git pin of Shallot until 0.10 is released. The project it writes depends on the stable published range, never on that pin.
