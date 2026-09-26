@@ -1,5 +1,6 @@
 import { expect } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { check } from "@dylanebert/shallot/harness/check";
@@ -45,9 +46,30 @@ check(
                 expect(existsSync(join(root, rel))).toBe(true);
             }
             expect(JSON.parse(readFileSync(join(root, "package.json"), "utf-8")).name).toBe("demo");
-            expect(readFileSync(join(root, ".gitignore"), "utf-8")).toBe(
-                "node_modules/\ndist/\nbuild/\n.artifacts/\n",
+            for (const dir of ["dist", "build", ".artifacts"])
+                mkdirSync(join(root, dir), { recursive: true });
+            writeFileSync(join(root, "bun.lock"), "fixture\n");
+            for (const file of ["dist/index.js", "build/app.js", ".artifacts/run"])
+                writeFileSync(join(root, file), "fixture\n");
+            execFileSync("git", ["-C", root, "init", "-q"]);
+            const ignored = execFileSync(
+                "git",
+                ["-C", root, "check-ignore", "dist/index.js", "build/app.js", ".artifacts/run"],
+                { encoding: "utf8" },
             );
+            const status = execFileSync(
+                "git",
+                ["-C", root, "status", "--short", "--untracked-files=all"],
+                { encoding: "utf8" },
+            );
+            expect(ignored).toContain("dist/index.js");
+            expect(ignored).toContain("build/app.js");
+            expect(ignored).toContain(".artifacts/run");
+            expect(status).toContain("?? bun.lock");
+            expect(status).toContain("?? src/spin.ts");
+            expect(status).not.toContain("dist/");
+            expect(status).not.toContain("build/");
+            expect(status).not.toContain(".artifacts/");
         } finally {
             rmSync(root, { recursive: true, force: true });
         }
