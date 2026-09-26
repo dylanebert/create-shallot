@@ -45,6 +45,9 @@ check(
                 expect(existsSync(join(root, rel))).toBe(true);
             }
             expect(JSON.parse(readFileSync(join(root, "package.json"), "utf-8")).name).toBe("demo");
+            expect(readFileSync(join(root, ".gitignore"), "utf-8")).toBe(
+                "node_modules/\ndist/\nbuild/\n.artifacts/\n",
+            );
         } finally {
             rmSync(root, { recursive: true, force: true });
         }
