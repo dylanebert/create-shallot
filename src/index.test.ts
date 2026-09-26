@@ -33,7 +33,35 @@ check(
         claim: "scaffold creates every declared project file and nested parent directory",
     },
     () => {
-        const root = temporaryRoot("shallot-scaffold-");
+        const scratch = temporaryRoot("shallot-scaffold-");
+        const root = join(scratch, "project");
+        const globalExcludes = join(scratch, "global-excludes");
+        const globalConfig = join(scratch, "global.gitconfig");
+        const initTemplate = join(scratch, "empty-template");
+        mkdirSync(initTemplate);
+        writeFileSync(globalExcludes, "dist/\n");
+        writeFileSync(globalConfig, `[core]\n\texcludesFile = ${globalExcludes}\n`);
+        const env: NodeJS.ProcessEnv = {
+            ...process.env,
+            HOME: scratch,
+            XDG_CONFIG_HOME: scratch,
+            GIT_CONFIG_NOSYSTEM: "1",
+            GIT_CONFIG_GLOBAL: globalConfig,
+            GIT_CONFIG_COUNT: "0",
+            GIT_CONFIG_PARAMETERS: "",
+        };
+        for (const key of [
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_COMMON_DIR",
+            "GIT_INDEX_FILE",
+            "GIT_OBJECT_DIRECTORY",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        ])
+            delete env[key];
+        for (const key of Object.keys(env)) if (key.startsWith("GIT_CONFIG_KEY_")) delete env[key];
+        const git = (...args: string[]) =>
+            execFileSync("git", ["-C", root, ...args], { encoding: "utf8", env });
         try {
             scaffold(root, template("demo"));
 
@@ -51,27 +79,30 @@ check(
             writeFileSync(join(root, "bun.lock"), "fixture\n");
             for (const file of ["dist/index.js", "build/app.js", ".artifacts/run"])
                 writeFileSync(join(root, file), "fixture\n");
-            execFileSync("git", ["-C", root, "init", "-q"]);
-            const ignored = execFileSync(
-                "git",
-                ["-C", root, "check-ignore", "dist/index.js", "build/app.js", ".artifacts/run"],
-                { encoding: "utf8" },
+            git("init", "-q", `--template=${initTemplate}`);
+            const ignored = git(
+                "check-ignore",
+                "-v",
+                "dist/index.js",
+                "build/app.js",
+                ".artifacts/run",
             );
-            const status = execFileSync(
-                "git",
-                ["-C", root, "status", "--short", "--untracked-files=all"],
-                { encoding: "utf8" },
-            );
-            expect(ignored).toContain("dist/index.js");
+            const status = git("status", "--short", "--untracked-files=all");
             expect(ignored).toContain("build/app.js");
             expect(ignored).toContain(".artifacts/run");
+            const distDecision = ignored.split("\n").find((line) => line.endsWith("dist/index.js"));
+            expect(distDecision).toContain(".gitignore:");
+            const ignorePath = join(root, ".gitignore");
+            const ignore = readFileSync(ignorePath, "utf8");
+            writeFileSync(ignorePath, ignore.replace(/^dist\/\n/m, ""));
+            expect(git("check-ignore", "-v", "dist/index.js")).toContain(globalExcludes);
             expect(status).toContain("?? bun.lock");
             expect(status).toContain("?? src/spin.ts");
             expect(status).not.toContain("dist/");
             expect(status).not.toContain("build/");
             expect(status).not.toContain(".artifacts/");
         } finally {
-            rmSync(root, { recursive: true, force: true });
+            rmSync(scratch, { recursive: true, force: true });
         }
     },
 );
