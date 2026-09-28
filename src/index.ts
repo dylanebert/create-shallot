@@ -262,7 +262,8 @@ export default {
     testDir: ".",
     testMatch: "**/*.e2e.ts",
     timeout: 20_000,
-    globalTimeout: 5_000,
+    // Measured locally at 2.4–3.7s; allow ~2× for CI while bounding a blowup.
+    globalTimeout: 15_000,
     fullyParallel: false,
     workers: 1,
     reporter: "list",
