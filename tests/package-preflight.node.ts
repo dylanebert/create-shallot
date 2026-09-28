@@ -242,4 +242,4 @@ if (!existsSync(resolve(root, "node_modules/.bin/shallot"))) throw new Error("in
         rmSync(creatorCache, { recursive: true, force: true });
         rmSync(frozenCache, { recursive: true, force: true });
     }
-}, 20_000);
+}, 30_000); // Five runs: 14.6–17.3s, median 15.1s; ~2× median for CI.
