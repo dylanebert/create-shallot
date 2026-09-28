@@ -3,25 +3,29 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 
-// The generated application stays on the stable published contract until a release exists. The
-// scaffold itself carries the qualified source candidate in its devDependencies (see package.json).
-const publishedShallotRange = "^0.9.5";
+// Generated projects use the upcoming stable contract; the scaffold itself tests the qualified
+// source candidate in its devDependencies (see package.json).
+const publishedShallotRange = "^0.10.0";
 export const QUALIFIED_SHALLOT_CANDIDATE =
-    "github:dylanebert/shallot#69f12a06438d8ce80aa1ab9e4b34de5b58820e15";
+    "github:dylanebert/shallot#e5870e50b276777046224ffc513cc229c3610ea8";
 
 /**
- * the project files keyed by relative path, with the project name interpolated. the single source of
- * truth for `bun create shallot <name>`.
- *
- * the project is pure data — a `shallot.json` manifest + plugin modules + `public/`, no vite
- * boilerplate. the CLI provides every harness over it: `shallot dev` runs it standalone with hot
- * reload, `shallot build` ships it (web + native targets). the emitted AGENTS.md points an agent at
- * the installed engine's consumer reference, and CLAUDE.md imports it.
+ * The project files keyed by relative path, with the project name interpolated. The single source of
+ * truth for `bun create shallot <name>`. The project owns its page, Vite config, tests and data; the
+ * emitted AGENTS.md points an agent at the installed engine's consumer reference, and CLAUDE.md
+ * imports it.
  */
 export function template(name: string): Record<string, string> {
     return {
+        "index.html": INDEX(name),
+        "vite.config.ts": VITE_CONFIG,
+        "playwright.config.ts": PLAYWRIGHT_CONFIG,
+        ".github/workflows/test.yml": PROJECT_CI,
+        "tests/project.test.ts": PROJECT_TEST,
+        "tests/project.e2e.ts": BROWSER_TEST(name),
         "public/icon.svg": ICON,
-        ".gitignore": "node_modules/\ndist/\nbuild/\n.artifacts/\n",
+        ".gitignore":
+            "node_modules/\ndist/\nbuild/\n.artifacts/\ntest-results/\nplaywright-report/\n",
         ".bun-version": "1.4.2\n",
         "package.json":
             JSON.stringify(
@@ -33,17 +37,22 @@ export function template(name: string): Record<string, string> {
                     packageManager: "bun@1.4.2",
                     engines: { bun: ">=1.4.2" },
                     scripts: {
-                        build: "shallot build",
-                        check: "tsc --noEmit",
+                        dev: "vite",
+                        build: "vite build",
+                        preview: "vite preview",
+                        check: "tsc --noEmit && tsc --noEmit --ignoreConfig --target ESNext --module NodeNext --moduleResolution NodeNext --types node vite.config.ts",
+                        test: "bun test --timeout=250",
+                        "test:browser": "playwright test",
                     },
                     dependencies: {
                         "@dylanebert/shallot": publishedShallotRange,
-                        typegpu: "~0.12.5",
                     },
                     devDependencies: {
                         "@types/node": "^26.2.0",
                         "@webgpu/types": "^0.1.72",
+                        playwright: "^1.63.0",
                         typescript: "^7.0.2",
+                        vite: "^8.3.0",
                     },
                 },
                 null,
@@ -108,26 +117,32 @@ A Shallot project.
 
 \`\`\`bash
 bun install
-bun run build
+bun run dev
 \`\`\`
 
-\`bun install\` fetches the stable published engine. \`bun run build\` invokes the
-installed Shallot carrier. Edit \`src/spin.ts\` (a plugin) and \`shallot.json\` (the
-manifest: scene + plugin enablement) in your IDE. The generated project keeps its
-stable dependency in the manifest; candidate work enters only through the local
-no-save link described in \`AGENTS.md\`.
+The project owns \`index.html\` and \`vite.config.ts\`; the Shallot Vite plugin
+loads the scene and project plugins from \`shallot.json\`. Edit \`src/spin.ts\` (a
+plugin) and \`public/scenes/scene.scene\` (the scene) in your IDE.
+
+## Verify
+
+\`\`\`bash
+bun run check
+bun test
+bun run test:browser
+\`\`\`
+
+The browser tier builds and previews this project with Vite before running
+Playwright Test.
 
 ## Ship
 
 \`\`\`bash
 bun run build
+bun run preview
 \`\`\`
 
-Builds a web bundle to \`dist/\`. Native targets
-(\`--target windows|mac|linux\`) download a prebuilt release shell when one exists
-for your installed version, and otherwise fall back to compiling from source,
-which needs the Rust toolchain and target system dependencies; see the installed
-engine's README for the per-target table.
+Builds a web bundle to \`dist/\` and previews it locally.
 `;
 
 const agents = (name: string) => `# ${name}
@@ -136,10 +151,8 @@ A WebGPU game built on \`@dylanebert/shallot\`.
 
 ## Package contract
 
-Admission is Bun 1.4.2 from \`.bun-version\` and \`packageManager\`. The persisted
-application identity is the stable published \`@dylanebert/shallot@^0.9.5\` range and
-its frozen lock resolution. The scaffold's unreleased candidate is not written into
-the generated application.
+Admission is Bun 1.4.2 from \`.bun-version\` and \`packageManager\`. The template stores
+the forthcoming \`@dylanebert/shallot@^0.10.0\` range, not the scaffold's full-SHA pin.
 
 For local co-development only, record the producer and consumer HEAD/dirt plus the
 consumer manifest and lock hashes. In the Shallot checkout run \`bun link\`; here run
@@ -150,27 +163,30 @@ residue remains, then rerun the focused gate. A link never changes the manifest 
 
 ## Layout
 
+- \`index.html\` and \`vite.config.ts\` — the app entry page and its Shallot Vite plugin
 - \`shallot.json\` — the manifest: which scene to open + which plugins to enable
 - \`public/scenes/*.scene\` — the world as declarative XML (each \`<a>\` is an entity, each attribute a component)
 - \`src/*.ts\` — your plugins (a plugin is data: components + systems)
 
-## Build and inspect
+## Build, run and verify
 
 \`\`\`bash
-bun run check                                   # independent project typecheck
-bun run build                                   # installed Shallot carrier, web bundle to dist/
+bun run dev
+bun run build
+bun run preview
+bun run check
+bun test
+bun run test:browser
 \`\`\`
 
-These are the product gates. The build invokes the installed Shallot bin and neither
-gate reads an engine checkout or a private engine script. If a future rendered claim
-needs a browser witness, add the public capture contract and an admitted integration
-row rather than inventing a project-local transport.
+Vite runs the project from its own config. The browser tier builds and previews this
+project, then runs Playwright Test against that preview.
 
 ## Engine reference
 
 The engine's README is the consumer reference. Read \`node_modules/@dylanebert/shallot/README.md\` for
-setup and CLI guidance; every public export carries JSDoc. Read
-\`node_modules/@dylanebert/shallot/examples/AGENTS.md\` before writing a pattern from scratch.
+setup guidance. Browse
+\`node_modules/@dylanebert/shallot/examples/first-person/\` before writing a pattern from scratch.
 
 ## Conventions
 
@@ -179,8 +195,8 @@ system, never \`player.jump()\`. Scenes declare; code transforms. One source of 
 one authoritative home; derive, don't duplicate.
 `;
 
-// The project manifest: `shallot dev` and a shipped `shallot build` both read it. `scene` is the scene
-// to open; `plugins` is enablement — "Orbit": true turns on the orbit camera the scene uses, and
+// The project manifest is loaded by the Shallot Vite plugin through `virtual:project`. `scene` is the
+// scene to open; `plugins` is enablement — "Orbit": true turns on the orbit camera the scene uses, and
 // "Spin": "./src/spin" declares our own plugin by its module path. The default plugins (render, lit
 // surface) are on unless you set one false.
 const MANIFEST = `{
@@ -197,6 +213,131 @@ const MANIFEST = `{
 // keeps the generated `bun run check` green (no TS18003) even when spin.ts is deleted for a static scene. It's
 // infrastructure, not demo content — don't delete it.
 const ENV = `/// <reference types="@webgpu/types" />
+`;
+
+const INDEX = (name: string) => `<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <title>${name}</title>
+        <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { background: #0c0a09; overflow: hidden; }
+            canvas { display: block; width: 100vw; height: 100vh; }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas"></canvas>
+        <script type="module">
+            import { BrowserInputPlugin, run } from "@dylanebert/shallot";
+            import project from "virtual:project";
+            await run({
+                plugins: [BrowserInputPlugin, ...project.plugins],
+                scene: project.scene ?? undefined,
+                defaults: false,
+                capacity: project.capacity ?? undefined,
+                pixelRatio: project.pixelRatio ?? undefined,
+            });
+            document.documentElement.dataset.shallotReady = "true";
+        </script>
+    </body>
+</html>
+`;
+
+const VITE_CONFIG = `import { shallot } from "@dylanebert/shallot/vite";
+
+export default {
+    plugins: [shallot()],
+};
+`;
+
+const PLAYWRIGHT_CONFIG = `import { fileURLToPath } from "node:url";
+import type { PlaywrightTestConfig } from "playwright/test";
+
+const projectRoot = fileURLToPath(new URL(".", import.meta.url));
+
+export default {
+    testDir: ".",
+    testMatch: "**/*.e2e.ts",
+    timeout: 20_000,
+    globalTimeout: 5_000,
+    fullyParallel: false,
+    workers: 1,
+    reporter: "list",
+    use: {
+        browserName: "chromium",
+        launchOptions: {
+            args: [
+                "--enable-unsafe-webgpu",
+                "--enable-features=WebGPUDeveloperFeatures",
+                "--enable-webgpu-developer-features",
+                "--enable-gpu",
+            ],
+        },
+        baseURL: "http://127.0.0.1:4173",
+        viewport: { width: 1280, height: 720 },
+        deviceScaleFactor: 1,
+    },
+    webServer: {
+        command: \`bunx vite build "\${projectRoot}" --config "\${projectRoot}vite.config.ts" && bunx vite preview "\${projectRoot}" --config "\${projectRoot}vite.config.ts" --host 127.0.0.1 --port 4173 --strictPort\`,
+        url: "http://127.0.0.1:4173",
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+    },
+} satisfies PlaywrightTestConfig;
+`;
+
+const PROJECT_CI = `name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun test --timeout=250
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:browser
+`;
+
+const PROJECT_TEST = `import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+
+test("manifest selects the starter scene and plugin", () => {
+    const project = JSON.parse(readFileSync(new URL("../shallot.json", import.meta.url), "utf8"));
+
+    expect(project.scene).toBe("scenes/scene.scene");
+    expect(project.plugins.Spin).toBe("./src/spin");
+});
+`;
+
+const BROWSER_TEST = (name: string) => `import { expect, test } from "playwright/test";
+
+test("starts the scaffolded scene in an isolated browser page", async ({ page }) => {
+    const response = await page.goto("/");
+
+    expect(response?.ok()).toBe(true);
+    expect(response?.headers()["cross-origin-opener-policy"]).toBe("same-origin");
+    expect(response?.headers()["cross-origin-embedder-policy"]).toBe("require-corp");
+    await expect(page).toHaveTitle(${JSON.stringify(name)});
+    await expect(page.locator("canvas#canvas")).toBeVisible();
+    expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
+    await expect(page.locator("html")).toHaveAttribute("data-shallot-ready", "true");
+});
 `;
 
 const SPIN = `import { type Plugin, type State, type System, Part, quat, Transform } from "@dylanebert/shallot";
