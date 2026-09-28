@@ -269,6 +269,7 @@ export default {
     reporter: "list",
     use: {
         browserName: "chromium",
+        channel: "chromium",
         launchOptions: {
             args: [
                 "--enable-unsafe-webgpu",
