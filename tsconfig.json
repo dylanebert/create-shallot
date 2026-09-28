@@ -1,7 +1,7 @@
 {
     "extends": "@dylanebert/shallot/tsconfig.json",
     "compilerOptions": {
-        "types": ["bun", "node", "@webgpu/types"]
+        "types": ["bun", "node"]
     },
     "include": ["src", "tests"]
 }
