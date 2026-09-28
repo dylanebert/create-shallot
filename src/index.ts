@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "path";
 // source candidate in its devDependencies (see package.json).
 const publishedShallotRange = "^0.10.0";
 export const QUALIFIED_SHALLOT_CANDIDATE =
-    "github:dylanebert/shallot#e5870e50b276777046224ffc513cc229c3610ea8";
+    "github:dylanebert/shallot#49fbfcbe4b8d00673b2798c96ae25bbefa5f6060";
 
 /**
  * The project files keyed by relative path, with the project name interpolated. The single source of

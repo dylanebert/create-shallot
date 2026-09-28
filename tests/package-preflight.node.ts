@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { QUALIFIED_SHALLOT_CANDIDATE } from "../src/index";
 
-const CANDIDATE_SHA = "e5870e50b276777046224ffc513cc229c3610ea8";
+const CANDIDATE_SHA = "49fbfcbe4b8d00673b2798c96ae25bbefa5f6060";
 const PRODUCT_RANGE = "^0.10.0";
 
 type CommandResult = { code: number; stdout: string; stderr: string };
