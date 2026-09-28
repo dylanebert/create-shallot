@@ -9,17 +9,16 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { QUALIFIED_SHALLOT_CANDIDATE } from "../src/index";
 
-const CANDIDATE_SHA = "49fbfcbe4b8d00673b2798c96ae25bbefa5f6060";
-const PRODUCT_RANGE = "^0.10.0";
+const PRODUCT_RANGE = "^0.10.0-next.1";
+const PUBLISHED_VERSION = "0.10.0-next.1";
 
 type CommandResult = { code: number; stdout: string; stderr: string };
 
-function run(command: string[], cwd: string, env?: Record<string, string>): CommandResult {
+function run(command: string[], cwd: string): CommandResult {
     const result = Bun.spawnSync(command, {
         cwd,
-        env: { ...process.env, ...env },
+        env: process.env,
         stdout: "pipe",
         stderr: "pipe",
     });
@@ -30,8 +29,8 @@ function run(command: string[], cwd: string, env?: Record<string, string>): Comm
     };
 }
 
-function runChecked(command: string[], cwd: string, env?: Record<string, string>): CommandResult {
-    const result = run(command, cwd, env);
+function runChecked(command: string[], cwd: string): CommandResult {
+    const result = run(command, cwd);
     if (result.code !== 0) {
         throw new Error(
             `${command.join(" ")} failed with ${result.code}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
@@ -54,33 +53,41 @@ function dependency(manifest: Record<string, unknown>, section: string, name: st
     return (manifest[section] as Record<string, unknown> | undefined)?.[name];
 }
 
-test("packed scaffold separates candidate and product identities and the generated candidate app passes its cheap gate and builds", async () => {
+function installedVersion(root: string): string {
+    return String(jsonFile(resolve(root, "node_modules/@dylanebert/shallot/package.json")).version);
+}
+
+function runProjectScripts(root: string): void {
+    runChecked([process.execPath, "run", "check"], root);
+    runChecked([process.execPath, "test", "--timeout=250"], root);
+    runChecked([process.execPath, "run", "build"], root);
+    if (!existsSync(resolve(root, "dist"))) throw new Error("generated build omitted dist/");
+}
+
+test("packed scaffold installs and verifies a generated app against the published release, then a staged tarball when available", () => {
     const root = process.cwd();
     const scaffoldManifest = jsonFile(resolve(root, "package.json"));
     const scaffoldLock = readFileSync(resolve(root, "bun.lock"), "utf8");
-    if (
-        dependency(scaffoldManifest, "devDependencies", "@dylanebert/shallot") !==
-        QUALIFIED_SHALLOT_CANDIDATE
-    ) {
-        throw new Error("scaffold package.json does not carry the qualified full-SHA candidate");
+    if (dependency(scaffoldManifest, "devDependencies", "@dylanebert/shallot") !== PRODUCT_RANGE) {
+        throw new Error("scaffold devDependency does not carry the published prerelease range");
     }
-    if (
-        !scaffoldLock.includes(
-            `@dylanebert/shallot@github:dylanebert/shallot#${CANDIDATE_SHA.slice(0, 7)}`,
-        )
-    ) {
-        throw new Error("scaffold bun.lock does not resolve the qualified candidate");
+    if (dependency(scaffoldManifest, "peerDependencies", "@dylanebert/shallot") !== PRODUCT_RANGE) {
+        throw new Error("scaffold peerDependency does not carry the published prerelease range");
+    }
+    if (!scaffoldLock.includes(`@dylanebert/shallot@${PUBLISHED_VERSION}`)) {
+        throw new Error("scaffold lockfile does not resolve the published prerelease");
     }
     if (readFileSync(resolve(root, ".bun-version"), "utf8").trim() !== "1.4.2") {
         throw new Error("scaffold does not admit its exact Bun version");
     }
 
     const candidate = realpathSync(resolve(root, "node_modules/@dylanebert/shallot"));
+    const candidateVersion = installedVersion(root);
     const packDir = mkdtempSync(join(tmpdir(), "create-shallot-pack-"));
     const creatorDir = mkdtempSync(join(tmpdir(), "create-shallot-creator-"));
     const appDir = resolve(creatorDir, "generated-app");
     const creatorCache = mkdtempSync(join(tmpdir(), "create-shallot-cache-"));
-    const frozenCache = mkdtempSync(join(tmpdir(), "create-shallot-frozen-cache-"));
+    const appCache = mkdtempSync(join(tmpdir(), "create-shallot-app-cache-"));
     try {
         const candidatePacked = runChecked(
             [
@@ -98,9 +105,9 @@ test("packed scaffold separates candidate and product identities and the generat
             .trim()
             .split("\n")
             .find((line) => line.endsWith(".tgz"));
-        if (candidateName === undefined)
-            throw new Error("candidate pack did not report an artifact");
+        if (candidateName === undefined) throw new Error("Shallot pack omitted its artifact");
         const candidateArtifact = resolve(packDir, candidateName);
+
         const packed = runChecked(
             [process.execPath, "pm", "pack", "--destination", packDir, "--quiet"],
             root,
@@ -109,7 +116,7 @@ test("packed scaffold separates candidate and product identities and the generat
             .trim()
             .split("\n")
             .find((line) => line.endsWith(".tgz"));
-        if (artifactName === undefined) throw new Error("bun pm pack did not report an artifact");
+        if (artifactName === undefined) throw new Error("bun pm pack omitted its artifact");
         const artifact = resolve(packDir, artifactName);
         const archive = runChecked(["tar", "-tzf", artifact], root).stdout.split("\n");
         for (const entry of ["package/package.json", "package/src/index.ts"]) {
@@ -141,16 +148,41 @@ test("packed scaffold separates candidate and product identities and the generat
         const appLockPath = resolve(appDir, "bun.lock");
         const appManifest = jsonFile(appManifestPath);
         if (dependency(appManifest, "dependencies", "@dylanebert/shallot") !== PRODUCT_RANGE) {
-            throw new Error("generated application does not persist the product Shallot range");
+            throw new Error("generated application does not persist the prerelease Shallot range");
         }
         if (dependency(appManifest, "devDependencies", "@dylanebert/shallot") !== undefined) {
-            throw new Error("generated application incorrectly carries the scaffold candidate");
+            throw new Error("generated application incorrectly carries a Shallot devDependency");
         }
         if (dependency(appManifest, "devDependencies", "vite") === undefined) {
             throw new Error("generated application does not own Vite as a devDependency");
         }
-        if (dependency(appManifest, "devDependencies", "playwright") === undefined) {
-            throw new Error("generated application does not own Playwright as a devDependency");
+        if (dependency(appManifest, "dependencies", "typegpu") !== undefined) {
+            throw new Error("generated application declares unused TypeGPU");
+        }
+        if (dependency(appManifest, "devDependencies", "unplugin-typegpu") !== undefined) {
+            throw new Error("generated application declares unplugin-typegpu");
+        }
+        if ((appManifest.scripts as Record<string, unknown>).check !== "tsc --noEmit") {
+            throw new Error("generated check is not one tsc --noEmit pass");
+        }
+        if (dependency(appManifest, "devDependencies", "@types/bun") === undefined) {
+            throw new Error("generated project does not own its Bun test types");
+        }
+        const generatedTsconfig = jsonFile(resolve(appDir, "tsconfig.json"));
+        if (generatedTsconfig.extends !== "@dylanebert/shallot/tsconfig.json") {
+            throw new Error("generated tsconfig does not extend Shallot's base");
+        }
+        if (JSON.stringify(generatedTsconfig.include) !== JSON.stringify(["src"])) {
+            throw new Error("generated tsconfig does not own its src include");
+        }
+        if (existsSync(resolve(appDir, "tsconfig.node.json"))) {
+            throw new Error("generated app has a second tsconfig");
+        }
+        if (
+            existsSync(resolve(appDir, "bunfig.toml")) ||
+            existsSync(resolve(appDir, "tests/preload.ts"))
+        ) {
+            throw new Error("generated app added an unnecessary TGSL preload to non-TGSL tests");
         }
         for (const required of [
             ".bun-version",
@@ -172,64 +204,49 @@ test("packed scaffold separates candidate and product identities and the generat
             throw new Error("generated Vite config does not install the Shallot plugin");
         }
 
-        const candidateManifest = {
-            ...appManifest,
-            dependencies: {
-                ...(appManifest.dependencies as Record<string, unknown>),
-                "@dylanebert/shallot": `file:${candidateArtifact}`,
-            },
-        };
-        writeFileSync(appManifestPath, `${JSON.stringify(candidateManifest, null, 2)}\n`);
-        runChecked([process.execPath, "install", "--cache-dir", creatorCache], appDir);
-        const installedManifest = jsonFile(appManifestPath);
-        const installedShallot = dependency(
-            installedManifest,
-            "dependencies",
-            "@dylanebert/shallot",
-        );
-        if (installedShallot !== `file:${candidateArtifact}`) {
-            throw new Error("candidate install did not stay local to the generated app");
+        runChecked([process.execPath, "install", "--cache-dir", appCache], appDir);
+        if (installedVersion(appDir) !== PUBLISHED_VERSION) {
+            throw new Error(`generated app did not install the published ${PUBLISHED_VERSION}`);
         }
         if (
             !existsSync(resolve(appDir, "node_modules/@dylanebert/shallot/examples/first-person"))
         ) {
             throw new Error("generated project context points at an unavailable example");
         }
-        const beforeManifest = hash(appManifestPath);
-        const beforeLock = hash(appLockPath);
+        const beforeStageManifest = hash(appManifestPath);
+        const beforeStageLock = hash(appLockPath);
+        runProjectScripts(appDir);
 
-        rmSync(resolve(appDir, "node_modules"), { recursive: true, force: true });
-        runChecked(
-            [
-                process.execPath,
-                "install",
-                "--force",
-                "--frozen-lockfile",
-                "--cache-dir",
-                frozenCache,
-            ],
-            appDir,
-        );
-        if (hash(appManifestPath) !== beforeManifest || hash(appLockPath) !== beforeLock) {
-            throw new Error("frozen generated-app install changed its manifest or lock");
+        // On the staged check, the root overlay has installed main's next.2 in node_modules.
+        // Pack that installed package and exercise the generated app through Bun's no-save overlay.
+        // The regular prerelease check sees next.1, where a same-version pack cannot prove overlay.
+        if (candidateVersion !== PUBLISHED_VERSION) {
+            runChecked([process.execPath, "add", "--no-save", candidateArtifact], appDir);
+            if (
+                hash(appManifestPath) !== beforeStageManifest ||
+                hash(appLockPath) !== beforeStageLock
+            ) {
+                throw new Error("staged app overlay changed its package.json or bun.lock");
+            }
+            if (installedVersion(appDir) !== candidateVersion) {
+                throw new Error(`staged app did not install Shallot ${candidateVersion}`);
+            }
+            runProjectScripts(appDir);
+
+            runChecked([process.execPath, "install", "--cache-dir", appCache], appDir);
+            if (
+                hash(appManifestPath) !== beforeStageManifest ||
+                hash(appLockPath) !== beforeStageLock
+            ) {
+                throw new Error(
+                    "app install changed its package.json or bun.lock while restoring pin",
+                );
+            }
+            if (installedVersion(appDir) !== PUBLISHED_VERSION) {
+                throw new Error("app install did not restore the published prerelease");
+            }
+            runProjectScripts(appDir);
         }
-
-        const probe = `
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
-const root = import.meta.dir;
-const installed = JSON.parse(readFileSync(resolve(root, "node_modules/@dylanebert/shallot/package.json"), "utf8"));
-if (installed.version !== "0.10.0") throw new Error("candidate identity is missing");
-if (!existsSync(resolve(root, "node_modules/.bin/shallot"))) throw new Error("installed Shallot bin is missing");
-`;
-        writeFileSync(resolve(appDir, "identity-probe.ts"), probe);
-        runChecked([process.execPath, "identity-probe.ts"], appDir);
-        rmSync(resolve(appDir, "identity-probe.ts"), { force: true });
-
-        runChecked([process.execPath, "test", "--timeout=250"], appDir);
-        runChecked([process.execPath, "run", "check"], appDir);
-        runChecked([process.execPath, "run", "build"], appDir);
-        if (!existsSync(resolve(appDir, "dist"))) throw new Error("generated build omitted dist/");
 
         const agents = readFileSync(resolve(appDir, "AGENTS.md"), "utf8");
         if (!agents.includes("bun link @dylanebert/shallot --no-save"))
@@ -240,6 +257,6 @@ if (!existsSync(resolve(root, "node_modules/.bin/shallot"))) throw new Error("in
         rmSync(packDir, { recursive: true, force: true });
         rmSync(creatorDir, { recursive: true, force: true });
         rmSync(creatorCache, { recursive: true, force: true });
-        rmSync(frozenCache, { recursive: true, force: true });
+        rmSync(appCache, { recursive: true, force: true });
     }
-}, 30_000); // Five runs: 14.6–17.3s, median 15.1s; ~2× median for CI.
+}, 120_000);

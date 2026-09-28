@@ -3,11 +3,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, join, resolve } from "path";
 
-// Generated projects use the upcoming stable contract; the scaffold itself tests the qualified
-// source candidate in its devDependencies (see package.json).
-const publishedShallotRange = "^0.10.0";
-export const QUALIFIED_SHALLOT_CANDIDATE =
-    "github:dylanebert/shallot#49fbfcbe4b8d00673b2798c96ae25bbefa5f6060";
+const publishedShallotRange = "^0.10.0-next.1";
 
 /**
  * The project files keyed by relative path, with the project name interpolated. The single source of
@@ -40,7 +36,7 @@ export function template(name: string): Record<string, string> {
                         dev: "vite",
                         build: "vite build",
                         preview: "vite preview",
-                        check: "tsc --noEmit && tsc --noEmit --ignoreConfig --target ESNext --module NodeNext --moduleResolution NodeNext --types node vite.config.ts",
+                        check: "tsc --noEmit",
                         test: "bun test --timeout=250",
                         "test:browser": "playwright test",
                     },
@@ -48,6 +44,7 @@ export function template(name: string): Record<string, string> {
                         "@dylanebert/shallot": publishedShallotRange,
                     },
                     devDependencies: {
+                        "@types/bun": "^1.4.2",
                         "@types/node": "^26.2.0",
                         "@webgpu/types": "^0.1.72",
                         playwright: "^1.63.0",
@@ -61,16 +58,7 @@ export function template(name: string): Record<string, string> {
         "tsconfig.json":
             JSON.stringify(
                 {
-                    compilerOptions: {
-                        target: "ESNext",
-                        module: "ESNext",
-                        moduleResolution: "bundler",
-                        lib: ["ESNext", "DOM", "DOM.Iterable"],
-                        types: ["@webgpu/types", "node", "vite/client"],
-                        strict: true,
-                        noEmit: true,
-                        skipLibCheck: true,
-                    },
+                    extends: "@dylanebert/shallot/tsconfig.json",
                     include: ["src"],
                 },
                 null,
@@ -152,13 +140,13 @@ A WebGPU game built on \`@dylanebert/shallot\`.
 ## Package contract
 
 Admission is Bun 1.4.2 from \`.bun-version\` and \`packageManager\`. The template stores
-the forthcoming \`@dylanebert/shallot@^0.10.0\` range, not the scaffold's full-SHA pin.
+the published \`@dylanebert/shallot@${publishedShallotRange}\` range.
 
 For local co-development only, record the producer and consumer HEAD/dirt plus the
 consumer manifest and lock hashes. In the Shallot checkout run \`bun link\`; here run
 \`bun link @dylanebert/shallot --no-save\`. Prove the installed package realpath is
 the producer. Exit with \`bun install --force --frozen-lockfile --cache-dir <new-empty-cache>\`,
-prove the stable installed identity and that no producer symlink or local-directory
+prove the pinned installed identity and that no producer symlink or local-directory
 residue remains, then rerun the focused gate. A link never changes the manifest or lock.
 
 ## Layout

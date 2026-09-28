@@ -24,18 +24,37 @@ jobs:
       - run: bun run check
       - run: bun test --timeout=250
       - run: bun test ./tests/package-preflight.node.ts
-      - name: scaffold and run the browser tier
+      - name: scaffold and verify the published and staged app
         run: |
           set -euo pipefail
           app="$RUNNER_TEMP/create-shallot-browser"
           candidate_dir="$(realpath node_modules/@dylanebert/shallot)"
+          candidate_version="$(bun -e 'const p=await Bun.file("node_modules/@dylanebert/shallot/package.json").json(); console.log(p.version)')"
           (cd "$candidate_dir" && bun pm pack --ignore-scripts --destination "$RUNNER_TEMP" --quiet)
           candidate_archive="$(find "$RUNNER_TEMP" -maxdepth 1 -name 'dylanebert-shallot-*.tgz' -print -quit)"
           test -n "$candidate_archive"
           bun run ./src/index.ts "$app"
           cd "$app"
-          CANDIDATE_ARCHIVE="$candidate_archive" bun -e 'const p=await Bun.file("package.json").json(); p.dependencies["@dylanebert/shallot"] = `file:${process.env.CANDIDATE_ARCHIVE}`; await Bun.write("package.json", JSON.stringify(p,null,2)+"\n")'
           bun install
-          bun test --timeout=250
           bunx playwright install --with-deps chromium
-          bun run test:browser
+          check_app() {
+            bun run check
+            bun test --timeout=250
+            bun run build
+            bun run test:browser
+          }
+          check_app
+          if [ "$candidate_version" != "0.10.0-next.1" ]; then
+            before_manifest="$(sha256sum package.json | cut -d ' ' -f1)"
+            before_lock="$(sha256sum bun.lock | cut -d ' ' -f1)"
+            bun add --no-save "$candidate_archive"
+            test "$(bun -e 'const p=await Bun.file("node_modules/@dylanebert/shallot/package.json").json(); console.log(p.version)')" = "$candidate_version"
+            test "$(sha256sum package.json | cut -d ' ' -f1)" = "$before_manifest"
+            test "$(sha256sum bun.lock | cut -d ' ' -f1)" = "$before_lock"
+            check_app
+            bun install
+            test "$(bun -e 'const p=await Bun.file("node_modules/@dylanebert/shallot/package.json").json(); console.log(p.version)')" = "0.10.0-next.1"
+            test "$(sha256sum package.json | cut -d ' ' -f1)" = "$before_manifest"
+            test "$(sha256sum bun.lock | cut -d ' ' -f1)" = "$before_lock"
+            check_app
+          fi

@@ -115,11 +115,21 @@ test("generated app owns Vite and declares its cheap and browser tiers", () => {
     expect(project.scripts.test).toBe("bun test --timeout=250");
     expect(project.scripts["test:browser"]).toBe("playwright test");
     expect(project.scripts.build).toBe("vite build");
-    expect(project.scripts.check).toContain("--moduleResolution NodeNext");
-    expect(project.scripts.check).toContain("vite.config.ts");
+    expect(project.scripts.check).toBe("tsc --noEmit");
+    expect(project.dependencies["@dylanebert/shallot"]).toBe("^0.10.0-next.1");
     expect(project.devDependencies.vite).toBeDefined();
+    expect(project.devDependencies["@types/bun"]).toBeDefined();
     expect(project.dependencies.typegpu).toBeUndefined();
     expect(project.devDependencies["unplugin-typegpu"]).toBeUndefined();
+    expect(JSON.parse(files["tsconfig.json"]).extends).toBe("@dylanebert/shallot/tsconfig.json");
+    expect(JSON.parse(files["tsconfig.json"]).include).toEqual(["src"]);
+    expect(Object.keys(files).filter((path) => path.startsWith("tsconfig"))).toEqual([
+        "tsconfig.json",
+    ]);
+    expect(files["tests/project.test.ts"]).not.toContain("typegpu");
+    expect(files["tests/project.test.ts"]).not.toContain("@dylanebert/shallot");
+    expect(files["bunfig.toml"]).toBeUndefined();
+    expect(files["tests/preload.ts"]).toBeUndefined();
     expect(vite).toContain("plugins: [shallot()]");
     expect(vite).not.toContain("typegpu()");
     expect(vite).not.toContain("optimizeDeps");
