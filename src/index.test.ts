@@ -126,6 +126,7 @@ test("generated app owns Vite and declares its cheap and browser tiers", () => {
     expect(vite).not.toContain("dedupe");
     expect(files["playwright.config.ts"]).toContain("globalTimeout:");
     expect(files["playwright.config.ts"]).toContain('channel: "chromium"');
+    expect(files["playwright.config.ts"]).toContain("reuseExistingServer: false");
     expect(files["tests/project.test.ts"]).toContain("bun:test");
     expect(files["tests/project.e2e.ts"]).toContain("playwright/test");
     expect(ci).toContain("bun test --timeout=250");
