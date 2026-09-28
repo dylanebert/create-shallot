@@ -148,6 +148,14 @@ test("generated project context points at installed consumer references, not con
     const agents = template("demo")["AGENTS.md"];
     expect(agents).toContain("node_modules/@dylanebert/shallot/README.md");
     expect(agents).toContain("node_modules/@dylanebert/shallot/examples/first-person/");
+    expect(agents).toContain("bun add @dylanebert/shallot");
+    expect(agents).toContain("bun add --no-save <tarball>");
+    expect(agents).toContain("bun link @dylanebert/shallot");
+    expect(agents).toContain("bun install");
+    expect(agents).not.toContain("bun link @dylanebert/shallot --no-save");
+    expect(agents).not.toContain("HEAD/dirt");
+    expect(agents).not.toContain("new-empty-cache");
+    expect(agents).not.toContain("--frozen-lockfile");
     expect(agents).not.toContain("node_modules/@dylanebert/shallot/AGENTS.md");
     expect(agents).not.toContain("examples/AGENTS.md");
 });

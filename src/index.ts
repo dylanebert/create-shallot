@@ -142,12 +142,10 @@ A WebGPU game built on \`@dylanebert/shallot\`.
 Admission is Bun 1.4.2 from \`.bun-version\` and \`packageManager\`. The template stores
 the published \`@dylanebert/shallot@${publishedShallotRange}\` range.
 
-For local co-development only, record the producer and consumer HEAD/dirt plus the
-consumer manifest and lock hashes. In the Shallot checkout run \`bun link\`; here run
-\`bun link @dylanebert/shallot --no-save\`. Prove the installed package realpath is
-the producer. Exit with \`bun install --force --frozen-lockfile --cache-dir <new-empty-cache>\`,
-prove the pinned installed identity and that no producer symlink or local-directory
-residue remains, then rerun the focused gate. A link never changes the manifest or lock.
+- Released: \`bun add @dylanebert/shallot\`.
+- Staged: run \`bun pm pack\` in Shallot, then \`bun add --no-save <tarball>\` here.
+- Live: run \`bun link\` in Shallot, then \`bun link @dylanebert/shallot\` here.
+- Return to the manifest pin: \`bun install\`.
 
 ## Layout
 

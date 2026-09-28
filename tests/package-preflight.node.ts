@@ -71,8 +71,8 @@ test("packed scaffold installs and verifies a generated app against the publishe
     if (dependency(scaffoldManifest, "devDependencies", "@dylanebert/shallot") !== PRODUCT_RANGE) {
         throw new Error("scaffold devDependency does not carry the published prerelease range");
     }
-    if (dependency(scaffoldManifest, "peerDependencies", "@dylanebert/shallot") !== PRODUCT_RANGE) {
-        throw new Error("scaffold peerDependency does not carry the published prerelease range");
+    if (dependency(scaffoldManifest, "peerDependencies", "@dylanebert/shallot") !== undefined) {
+        throw new Error("scaffolder must not install Shallot as a peer dependency");
     }
     if (!scaffoldLock.includes(`@dylanebert/shallot@${PUBLISHED_VERSION}`)) {
         throw new Error("scaffold lockfile does not resolve the published prerelease");
@@ -249,8 +249,18 @@ test("packed scaffold installs and verifies a generated app against the publishe
         }
 
         const agents = readFileSync(resolve(appDir, "AGENTS.md"), "utf8");
-        if (!agents.includes("bun link @dylanebert/shallot --no-save"))
-            throw new Error("generated contract omitted no-save local entry");
+        for (const workflow of [
+            "bun add @dylanebert/shallot",
+            "bun add --no-save <tarball>",
+            "bun link @dylanebert/shallot",
+            "bun install",
+        ]) {
+            if (!agents.includes(workflow))
+                throw new Error(`generated contract omitted ${workflow}`);
+        }
+        if (agents.includes("bun link @dylanebert/shallot --no-save")) {
+            throw new Error("generated contract adds --no-save to bun link");
+        }
         if (agents.includes("@dylanebert/shallot/scripts"))
             throw new Error("generated contract reaches a private engine script");
     } finally {
