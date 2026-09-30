@@ -67,7 +67,7 @@ export function template(name: string): Record<string, string> {
         "shallot.json": MANIFEST,
         "src/env.d.ts": ENV,
         "src/spin.ts": SPIN,
-        "public/scenes/scene.scene": SCENE,
+        "src/world.ts": WORLD,
         "README.md": readme(name),
         "AGENTS.md": agents(name),
         "CLAUDE.md": CLAUDE_IMPORT,
@@ -109,8 +109,8 @@ bun run dev
 \`\`\`
 
 The project owns \`index.html\` and \`vite.config.ts\`; the Shallot Vite plugin
-loads the scene and project plugins from \`shallot.json\`. Edit \`src/spin.ts\` (a
-plugin) and \`public/scenes/scene.scene\` (the scene) in your IDE.
+loads project plugins from \`shallot.json\`. Edit \`src/spin.ts\` (animation) and
+\`src/world.ts\` (the world) in your IDE.
 
 ## Verify
 
@@ -150,8 +150,8 @@ the published \`@dylanebert/shallot@${publishedShallotRange}\` range.
 ## Layout
 
 - \`index.html\` and \`vite.config.ts\` — the app entry page and its Shallot Vite plugin
-- \`shallot.json\` — the manifest: which scene to open + which plugins to enable
-- \`public/scenes/*.scene\` — the world as declarative XML (each \`<a>\` is an entity, each attribute a component)
+- \`shallot.json\` — the manifest: which plugins to enable
+- \`src/world.ts\` — creates entities and adds their components
 - \`src/*.ts\` — your plugins (a plugin is data: components + systems)
 
 ## Build, run and verify
@@ -177,20 +177,22 @@ setup guidance. Browse
 ## Conventions
 
 Data-oriented, ECS, declarative. Add components and systems, not methods — a \`Jump\` marker plus a
-system, never \`player.jump()\`. Scenes declare; code transforms. One source of truth: every value has
-one authoritative home; derive, don't duplicate.
+system, never \`player.jump()\`. Write a one-off entity straight out: create, then adds. For repeated
+content, use a typed table and a function that creates one entity and returns its eid. Keep needed
+eids as variables or return values, never names. See the engine's first-person \`route\` example.
+Every value has one authoritative home; derive, don't duplicate.
 `;
 
-// The project manifest is loaded by the Shallot Vite plugin through `virtual:project`. `scene` is the
-// scene to open; `plugins` is enablement — "Orbit": true turns on the orbit camera the scene uses, and
+// The project manifest is loaded by the Shallot Vite plugin through `virtual:project`.
+// `plugins` is enablement — "Orbit": true turns on the orbit camera, and
 // "Spin": "./src/spin" declares our own plugin by its module path. The default plugins (render, lit
 // surface) are on unless you set one false.
 const MANIFEST = `{
   "$schema": "./node_modules/@dylanebert/shallot/shallot.schema.json",
-  "scene": "scenes/scene.scene",
   "plugins": {
     "Orbit": true,
-    "Spin": "./src/spin"
+    "Spin": "./src/spin",
+    "World": "./src/world"
   }
 }
 `;
@@ -221,7 +223,6 @@ const INDEX = (name: string) => `<!doctype html>
             import project from "virtual:project";
             await run({
                 plugins: [BrowserInputPlugin, ...project.plugins],
-                scene: project.scene ?? undefined,
                 defaults: false,
                 capacity: project.capacity ?? undefined,
                 pixelRatio: project.pixelRatio ?? undefined,
@@ -305,10 +306,10 @@ jobs:
 const PROJECT_TEST = `import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-test("manifest selects the starter scene and plugin", () => {
+test("manifest selects the starter world and animation plugins", () => {
     const project = JSON.parse(readFileSync(new URL("../shallot.json", import.meta.url), "utf8"));
 
-    expect(project.scene).toBe("scenes/scene.scene");
+    expect(project.plugins.World).toBe("./src/world");
     expect(project.plugins.Spin).toBe("./src/spin");
 });
 `;
@@ -351,16 +352,33 @@ const SpinPlugin: Plugin = { name: "Spin", systems: [SpinSystem] };
 export default SpinPlugin;
 `;
 
-const SCENE = `<scene>
-    <a ambient-light="color: 0xd0dcec; intensity: 0.5" />
-    <a directional-light="direction: -0.4 -1 -0.55; color: 0xfff4e0; intensity: 1.1" />
+const WORLD = `import {
+    AmbientLight, Camera, Color, DirectionalLight, MeshInstance, Orbit,
+    type Plugin, StandardRenderer, Transform,
+} from "@dylanebert/shallot";
 
-    <!-- the camera auto-binds to the page's <canvas>; drag to orbit, scroll to zoom -->
-    <a camera sear orbit="distance: 5; yaw: 0.6; pitch: 0.25" transform />
-
-    <!-- a Part is the engine's drop-in renderable: a mesh (default "cube") wearing a surface (default "default", lit) -->
-    <a part transform="pos: 0 0 0" color="rgba: 0.85 0.55 0.35 1" />
-</scene>
+const WorldPlugin: Plugin = {
+    name: "World",
+    initialize(world) {
+        const ambient = world.create();
+        world.add(ambient, AmbientLight, { color: 0xd0dcec, intensity: 0.5 });
+        const sun = world.create();
+        world.add(sun, DirectionalLight, {
+            direction: [-0.4, -1, -0.55, 0], color: 0xfff4e0, intensity: 1.1,
+        });
+        // The camera auto-binds to the page's canvas; drag to orbit, scroll to zoom.
+        const camera = world.create();
+        world.add(camera, Camera);
+        world.add(camera, StandardRenderer);
+        world.add(camera, Orbit, { distance: 5, yaw: 0.6, pitch: 0.25 });
+        world.add(camera, Transform);
+        const box = world.create();
+        world.add(box, MeshInstance);
+        world.add(box, Transform, { translation: [0, 0, 0, 0] });
+        world.add(box, Color, { rgba: [0.85, 0.55, 0.35, 1] });
+    },
+};
+export default WorldPlugin;
 `;
 
 /** `bun create shallot <project-name>` — parse argv, guard the target dir, scaffold, report next steps.

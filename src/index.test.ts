@@ -69,7 +69,7 @@ test("scaffold creates every declared project file and nested parent directory",
             "tests/project.e2e.ts",
             "shallot.json",
             "public/icon.svg",
-            "public/scenes/scene.scene",
+            "src/world.ts",
         ]) {
             expect(existsSync(join(root, rel))).toBe(true);
         }
