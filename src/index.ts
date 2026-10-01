@@ -17,7 +17,6 @@ export function template(name: string): Record<string, string> {
         "vite.config.ts": VITE_CONFIG,
         "playwright.config.ts": PLAYWRIGHT_CONFIG,
         ".github/workflows/test.yml": PROJECT_CI,
-        "tests/project.test.ts": PROJECT_TEST,
         "tests/project.e2e.ts": BROWSER_TEST(name),
         "public/icon.svg": ICON,
         ".gitignore":
@@ -37,7 +36,6 @@ export function template(name: string): Record<string, string> {
                         build: "vite build",
                         preview: "vite preview",
                         check: "tsc --noEmit",
-                        test: "bun test --timeout=250",
                         "test:browser": "playwright test",
                     },
                     dependencies: {
@@ -64,7 +62,6 @@ export function template(name: string): Record<string, string> {
                 null,
                 2,
             ) + "\n",
-        "shallot.json": MANIFEST,
         "src/env.d.ts": ENV,
         "src/spin.ts": SPIN,
         "src/world.ts": WORLD,
@@ -108,15 +105,14 @@ bun install
 bun run dev
 \`\`\`
 
-The project owns \`index.html\` and \`vite.config.ts\`; the Shallot Vite plugin
-loads project plugins from \`shallot.json\`. Edit \`src/spin.ts\` (animation) and
+The project owns \`index.html\` and \`vite.config.ts\`; its page imports the plugins it runs.
+Edit \`src/spin.ts\` (animation) and
 \`src/world.ts\` (the world) in your IDE.
 
 ## Verify
 
 \`\`\`bash
 bun run check
-bun test
 bun run test:browser
 \`\`\`
 
@@ -150,7 +146,6 @@ the published \`@dylanebert/shallot@${publishedShallotRange}\` range.
 ## Layout
 
 - \`index.html\` and \`vite.config.ts\` — the app entry page and its Shallot Vite plugin
-- \`shallot.json\` — the manifest: which plugins to enable
 - \`src/world.ts\` — creates entities and adds their components
 - \`src/*.ts\` — your plugins (a plugin is data: components + systems)
 
@@ -161,7 +156,6 @@ bun run dev
 bun run build
 bun run preview
 bun run check
-bun test
 bun run test:browser
 \`\`\`
 
@@ -181,20 +175,6 @@ system, never \`player.jump()\`. Write a one-off entity straight out: create, th
 content, use a typed table and a function that creates one entity and returns its eid. Keep needed
 eids as variables or return values, never names. See the engine's first-person \`route\` example.
 Every value has one authoritative home; derive, don't duplicate.
-`;
-
-// The project manifest is loaded by the Shallot Vite plugin through `virtual:project`.
-// `plugins` is enablement — "Orbit": true turns on the orbit camera, and
-// "Spin": "./src/spin" declares our own plugin by its module path. The default plugins (render, lit
-// surface) are on unless you set one false.
-const MANIFEST = `{
-  "$schema": "./node_modules/@dylanebert/shallot/shallot.schema.json",
-  "plugins": {
-    "Orbit": true,
-    "Spin": "./src/spin",
-    "World": "./src/world"
-  }
-}
 `;
 
 // Ambient types + the tsconfig anchor. `include: ["src"]` needs at least one matching file, so this
@@ -219,13 +199,11 @@ const INDEX = (name: string) => `<!doctype html>
     <body>
         <canvas id="canvas"></canvas>
         <script type="module">
-            import { BrowserInputPlugin, run } from "@dylanebert/shallot";
-            import project from "virtual:project";
+            import { OrbitPlugin, run } from "@dylanebert/shallot";
+            import SpinPlugin from "./src/spin";
+            import WorldPlugin from "./src/world";
             await run({
-                plugins: [BrowserInputPlugin, ...project.plugins],
-                defaults: false,
-                capacity: project.capacity ?? undefined,
-                pixelRatio: project.pixelRatio ?? undefined,
+                plugins: [OrbitPlugin, SpinPlugin, WorldPlugin],
             });
             document.documentElement.dataset.shallotReady = "true";
         </script>
@@ -298,20 +276,8 @@ jobs:
           bun-version-file: .bun-version
       - run: bun install --frozen-lockfile
       - run: bun run check
-      - run: bun test --timeout=250
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:browser
-`;
-
-const PROJECT_TEST = `import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-
-test("manifest selects the starter world and animation plugins", () => {
-    const project = JSON.parse(readFileSync(new URL("../shallot.json", import.meta.url), "utf8"));
-
-    expect(project.plugins.World).toBe("./src/world");
-    expect(project.plugins.Spin).toBe("./src/spin");
-});
 `;
 
 const BROWSER_TEST = (name: string) => `import { expect, test } from "playwright/test";
@@ -333,7 +299,7 @@ const SPIN = `import { type Plugin, type State, type System, Part, quat, Transfo
 
 // A plugin is plain data: components + systems the engine runs. This system spins every Part around Y.
 // It runs in the "simulation" group, which plays when the project runs. Delete this file (and its
-// \`shallot.json\` entry) for a static scene.
+// import and plugins entry in index.html) for a static scene.
 const SpinSystem: System = {
     group: "simulation",
     update(state: State) {
@@ -346,8 +312,7 @@ const SpinSystem: System = {
     },
 };
 
-// The default export is the plugin — \`shallot.json\` references this file by path and imports
-// its default. The name ("Spin") is how the manifest lists it.
+// The page imports this plugin and includes it in its plugins list.
 const SpinPlugin: Plugin = { name: "Spin", systems: [SpinSystem] };
 export default SpinPlugin;
 `;

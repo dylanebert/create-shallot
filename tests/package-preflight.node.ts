@@ -59,7 +59,6 @@ function installedVersion(root: string): string {
 
 function runProjectScripts(root: string): void {
     runChecked([process.execPath, "run", "check"], root);
-    runChecked([process.execPath, "test", "--timeout=250"], root);
     runChecked([process.execPath, "run", "build"], root);
     if (!existsSync(resolve(root, "dist"))) throw new Error("generated build omitted dist/");
 }
@@ -190,9 +189,7 @@ test("packed scaffold installs and verifies a generated app against the publishe
             ".github/workflows/test.yml",
             "index.html",
             "playwright.config.ts",
-            "shallot.json",
             "src/spin.ts",
-            "tests/project.test.ts",
             "tests/project.e2e.ts",
             "vite.config.ts",
         ]) {

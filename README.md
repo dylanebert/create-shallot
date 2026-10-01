@@ -1,7 +1,7 @@
 # create-shallot
 
 the scaffold behind `bun create shallot`. it writes a fresh [shallot](https://github.com/dylanebert/shallot)
-project with its own `index.html` and Vite config, a manifest and plugin, Bun and
+project with its own `index.html` and Vite config, imported plugins, TypeScript and
 Playwright checks, and an agent contract that points at the installed engine.
 
 ```bash

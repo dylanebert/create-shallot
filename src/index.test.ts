@@ -65,9 +65,7 @@ test("scaffold creates every declared project file and nested parent directory",
             "vite.config.ts",
             "playwright.config.ts",
             ".github/workflows/test.yml",
-            "tests/project.test.ts",
             "tests/project.e2e.ts",
-            "shallot.json",
             "public/icon.svg",
             "src/world.ts",
         ]) {
@@ -106,13 +104,15 @@ test("scaffold creates every declared project file and nested parent directory",
     }
 });
 
-test("generated app owns Vite and declares its cheap and browser tiers", () => {
+test("generated app owns Vite and declares its browser tier", () => {
     const files = template("demo");
     const project = JSON.parse(files["package.json"]);
     const vite = files["vite.config.ts"];
     const ci = files[".github/workflows/test.yml"];
 
-    expect(project.scripts.test).toBe("bun test --timeout=250");
+    expect(project.scripts.test).toBeUndefined();
+    expect(files["tests/project.test.ts"]).toBeUndefined();
+    expect(files["shallot.json"]).toBeUndefined();
     expect(project.scripts["test:browser"]).toBe("playwright test");
     expect(project.scripts.build).toBe("vite build");
     expect(project.scripts.check).toBe("tsc --noEmit");
@@ -126,8 +126,6 @@ test("generated app owns Vite and declares its cheap and browser tiers", () => {
     expect(Object.keys(files).filter((path) => path.startsWith("tsconfig"))).toEqual([
         "tsconfig.json",
     ]);
-    expect(files["tests/project.test.ts"]).not.toContain("typegpu");
-    expect(files["tests/project.test.ts"]).not.toContain("@dylanebert/shallot");
     expect(files["bunfig.toml"]).toBeUndefined();
     expect(files["tests/preload.ts"]).toBeUndefined();
     expect(vite).toContain("plugins: [shallot()]");
@@ -137,9 +135,8 @@ test("generated app owns Vite and declares its cheap and browser tiers", () => {
     expect(files["playwright.config.ts"]).toContain("globalTimeout:");
     expect(files["playwright.config.ts"]).toContain('channel: "chromium"');
     expect(files["playwright.config.ts"]).toContain("reuseExistingServer: false");
-    expect(files["tests/project.test.ts"]).toContain("bun:test");
     expect(files["tests/project.e2e.ts"]).toContain("playwright/test");
-    expect(ci).toContain("bun test --timeout=250");
+    expect(ci).not.toContain("bun test --timeout=250");
     expect(ci).toContain("bun run test:browser");
     expect(files[".gitignore"]).toContain("test-results/");
 });
@@ -188,7 +185,7 @@ test("main reports successful creation and returns zero for a fresh project", ()
         expect(output.value).toBe(0);
         expect(output.stdout).toContain("Created");
         expect(output.stdout).toContain("bun install");
-        expect(existsSync(join(project, "shallot.json"))).toBe(true);
+        expect(existsSync(join(project, "index.html"))).toBe(true);
         expect(existsSync(join(project, "public/icon.svg"))).toBe(true);
     } finally {
         rmSync(root, { recursive: true, force: true });
