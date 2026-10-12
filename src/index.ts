@@ -35,7 +35,6 @@ export function template(name: string): Record<string, string> {
                         dev: "vite",
                         build: "vite build",
                         preview: "vite preview",
-                        "test:browser": "playwright test",
                     },
                     dependencies: {
                         "@dylanebert/shallot": publishedShallotRange,
@@ -111,7 +110,7 @@ Edit \`src/spin.ts\` (animation) and
 
 \`\`\`bash
 bun check
-bun run test:browser
+bunx playwright test
 \`\`\`
 
 The browser tier builds and previews this project with Vite before running
@@ -154,7 +153,7 @@ bun run dev
 bun run build
 bun run preview
 bun check
-bun run test:browser
+bunx playwright test
 \`\`\`
 
 Vite runs the project from its own config. The browser tier builds and previews this
@@ -275,7 +274,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun check
       - run: bunx playwright install --with-deps chromium
-      - run: bun run test:browser
+      - run: bunx playwright test
 `;
 
 const BROWSER_TEST = (name: string) => `import { expect, test } from "playwright/test";

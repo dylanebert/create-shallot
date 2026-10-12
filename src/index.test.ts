@@ -104,7 +104,7 @@ test("scaffold creates every declared project file and nested parent directory",
     }
 });
 
-test("generated app owns Vite and declares its browser tier", () => {
+test("generated app owns Vite and uses Playwright directly", () => {
     const files = template("demo");
     const project = JSON.parse(files["package.json"]);
     const vite = files["vite.config.ts"];
@@ -113,8 +113,11 @@ test("generated app owns Vite and declares its browser tier", () => {
     expect(project.scripts.test).toBeUndefined();
     expect(files["tests/project.test.ts"]).toBeUndefined();
     expect(files["shallot.json"]).toBeUndefined();
-    expect(project.scripts["test:browser"]).toBe("playwright test");
-    expect(project.scripts.build).toBe("vite build");
+    expect(project.scripts).toEqual({
+        dev: "vite",
+        build: "vite build",
+        preview: "vite preview",
+    });
     expect(project.scripts.check).toBeUndefined();
     expect(project.scripts.lint).toBeUndefined();
     expect(project.devDependencies.typescript).toBeUndefined();
@@ -141,7 +144,7 @@ test("generated app owns Vite and declares its browser tier", () => {
     expect(files["playwright.config.ts"]).toContain("reuseExistingServer: false");
     expect(files["tests/project.e2e.ts"]).toContain("playwright/test");
     expect(ci).not.toContain("bun test --timeout=250");
-    expect(ci).toContain("bun run test:browser");
+    expect(ci).toContain("bunx playwright test");
     expect(files[".gitignore"]).toContain("test-results/");
 });
 
