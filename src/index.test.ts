@@ -115,10 +115,14 @@ test("generated app owns Vite and declares its browser tier", () => {
     expect(files["shallot.json"]).toBeUndefined();
     expect(project.scripts["test:browser"]).toBe("playwright test");
     expect(project.scripts.build).toBe("vite build");
-    expect(project.scripts.check).toBe("tsc --noEmit");
+    expect(project.scripts.check).toBeUndefined();
+    expect(project.scripts.lint).toBeUndefined();
+    expect(project.devDependencies.typescript).toBeUndefined();
+    expect(project.packageManager).toBe("bun@1.4.3");
+    expect(project.engines.bun).toBe(">=1.4.3");
     expect(project.dependencies["@dylanebert/shallot"]).toBe("^0.10.0-next.1");
     expect(project.devDependencies.vite).toBeDefined();
-    expect(project.devDependencies["@types/bun"]).toBeDefined();
+    expect(project.devDependencies["@types/bun"]).toBe("^1.4.3");
     expect(project.dependencies.typegpu).toBeUndefined();
     expect(project.devDependencies["unplugin-typegpu"]).toBeUndefined();
     expect(JSON.parse(files["tsconfig.json"]).extends).toBe("@dylanebert/shallot/tsconfig.json");

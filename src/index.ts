@@ -21,7 +21,7 @@ export function template(name: string): Record<string, string> {
         "public/icon.svg": ICON,
         ".gitignore":
             "node_modules/\ndist/\nbuild/\n.artifacts/\ntest-results/\nplaywright-report/\n",
-        ".bun-version": "1.4.2\n",
+        ".bun-version": "1.4.3\n",
         "package.json":
             JSON.stringify(
                 {
@@ -29,24 +29,22 @@ export function template(name: string): Record<string, string> {
                     version: "0.0.0",
                     private: true,
                     type: "module",
-                    packageManager: "bun@1.4.2",
-                    engines: { bun: ">=1.4.2" },
+                    packageManager: "bun@1.4.3",
+                    engines: { bun: ">=1.4.3" },
                     scripts: {
                         dev: "vite",
                         build: "vite build",
                         preview: "vite preview",
-                        check: "tsc --noEmit",
                         "test:browser": "playwright test",
                     },
                     dependencies: {
                         "@dylanebert/shallot": publishedShallotRange,
                     },
                     devDependencies: {
-                        "@types/bun": "^1.4.2",
+                        "@types/bun": "^1.4.3",
                         "@types/node": "^26.2.0",
                         "@webgpu/types": "^0.1.72",
                         playwright: "^1.63.0",
-                        typescript: "^7.0.2",
                         vite: "^8.3.0",
                     },
                 },
@@ -112,7 +110,7 @@ Edit \`src/spin.ts\` (animation) and
 ## Verify
 
 \`\`\`bash
-bun run check
+bun check
 bun run test:browser
 \`\`\`
 
@@ -135,7 +133,7 @@ A WebGPU game built on \`@dylanebert/shallot\`.
 
 ## Package contract
 
-Admission is Bun 1.4.2 from \`.bun-version\` and \`packageManager\`. The template stores
+Admission is Bun 1.4.3 from \`.bun-version\` and \`packageManager\`. The template stores
 the published \`@dylanebert/shallot@${publishedShallotRange}\` range.
 
 - Released: \`bun add @dylanebert/shallot\`.
@@ -155,7 +153,7 @@ the published \`@dylanebert/shallot@${publishedShallotRange}\` range.
 bun run dev
 bun run build
 bun run preview
-bun run check
+bun check
 bun run test:browser
 \`\`\`
 
@@ -178,7 +176,7 @@ Every value has one authoritative home; derive, don't duplicate.
 `;
 
 // Ambient types + the tsconfig anchor. `include: ["src"]` needs at least one matching file, so this
-// keeps the generated `bun run check` green (no TS18003) even when spin.ts is deleted for a static scene. It's
+// keeps the generated `bun check` green (no TS18003) even when spin.ts is deleted for a static scene. It's
 // infrastructure, not demo content — don't delete it.
 const ENV = `/// <reference types="@webgpu/types" />
 `;
@@ -275,7 +273,7 @@ jobs:
         with:
           bun-version-file: .bun-version
       - run: bun install --frozen-lockfile
-      - run: bun run check
+      - run: bun check
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:browser
 `;

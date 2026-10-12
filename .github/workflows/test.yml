@@ -21,8 +21,9 @@ jobs:
         with:
           bun-version-file: .bun-version
       - run: bun install --frozen-lockfile
-      - run: bun run check
-      - run: bun test --timeout=250
+      - run: bun check
+      - run: bun run lint
+      - run: bun run test
       - run: bun test ./tests/package-preflight.node.ts
       - name: scaffold and verify the published and staged app
         run: |
@@ -38,7 +39,7 @@ jobs:
           bun install
           bunx playwright install --with-deps chromium
           check_app() {
-            bun run check
+            bun check
             bun test --timeout=250
             bun run build
             bun run test:browser

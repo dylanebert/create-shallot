@@ -58,7 +58,7 @@ function installedVersion(root: string): string {
 }
 
 function runProjectScripts(root: string): void {
-    runChecked([process.execPath, "run", "check"], root);
+    runChecked([process.execPath, "check"], root);
     runChecked([process.execPath, "run", "build"], root);
     if (!existsSync(resolve(root, "dist"))) throw new Error("generated build omitted dist/");
 }
@@ -76,7 +76,7 @@ test("packed scaffold installs and verifies a generated app against the publishe
     if (!scaffoldLock.includes(`@dylanebert/shallot@${PUBLISHED_VERSION}`)) {
         throw new Error("scaffold lockfile does not resolve the published prerelease");
     }
-    if (readFileSync(resolve(root, ".bun-version"), "utf8").trim() !== "1.4.2") {
+    if (readFileSync(resolve(root, ".bun-version"), "utf8").trim() !== "1.4.3") {
         throw new Error("scaffold does not admit its exact Bun version");
     }
 
@@ -131,7 +131,7 @@ test("packed scaffold installs and verifies a generated app against the publishe
                 {
                     name: "create-shallot-preflight",
                     private: true,
-                    packageManager: "bun@1.4.2",
+                    packageManager: "bun@1.4.3",
                     devDependencies: { "create-shallot": `file:${artifact}` },
                 },
                 null,
@@ -161,8 +161,11 @@ test("packed scaffold installs and verifies a generated app against the publishe
         if (dependency(appManifest, "devDependencies", "unplugin-typegpu") !== undefined) {
             throw new Error("generated application declares unplugin-typegpu");
         }
-        if ((appManifest.scripts as Record<string, unknown>).check !== "tsc --noEmit") {
-            throw new Error("generated check is not one tsc --noEmit pass");
+        if ((appManifest.scripts as Record<string, unknown>).check !== undefined) {
+            throw new Error("generated app retains a check script that shadows bun check");
+        }
+        if (dependency(appManifest, "devDependencies", "typescript") !== undefined) {
+            throw new Error("generated app retains an unused TypeScript dependency");
         }
         if (dependency(appManifest, "devDependencies", "@types/bun") === undefined) {
             throw new Error("generated project does not own its Bun test types");
@@ -214,9 +217,9 @@ test("packed scaffold installs and verifies a generated app against the publishe
         const beforeStageLock = hash(appLockPath);
         runProjectScripts(appDir);
 
-        // On the staged check, the root overlay has installed main's next.2 in node_modules.
+        // For the staged app check, the root overlay has installed main's next.2 in node_modules.
         // Pack that installed package and exercise the generated app through Bun's no-save overlay.
-        // The regular prerelease check sees next.1, where a same-version pack cannot prove overlay.
+        // The regular prerelease run sees next.1, where a same-version pack cannot prove overlay.
         if (candidateVersion !== PUBLISHED_VERSION) {
             runChecked([process.execPath, "add", "--no-save", candidateArtifact], appDir);
             if (
