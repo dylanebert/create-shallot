@@ -1,17 +1,16 @@
 # Contributing
 
-For anyone changing the scaffold, person or agent. This page holds what the tree, the scripts and a failing check do not say.
+For changing the `bun create shallot` shim. The package owns no scaffold files; Shallot's CLI owns project creation.
 
 ```bash
 bun install --frozen-lockfile
 bun check
 bun run lint
 bun run test
-bun test ./tests/package-preflight.node.ts
+bun test ./tests/create.node.ts
 ```
 
-- The scaffold never imports the engine; a scaffolded project does. Both the scaffold's integration-test dependency and the project it writes use the published `^0.10.0-next.1` range.
-- `bun run test` runs the cheap scaffold tests. The packed-consumer preflight is a named Node tier, run by path; there is no subject selector.
-- To try an unreleased engine in a scaffolded project, install that candidate in the generated project, not here. Package states, linking and exit: [Shallot's CONTRIBUTING](https://github.com/dylanebert/shallot/blob/main/CONTRIBUTING.md#pins-and-dependencies).
-- The generated app's `playwright.config.ts` builds and serves its own Vite preview; run its `*.e2e.ts` checks with `bunx playwright test`. The generated CI workflow runs `bun check` and the browser tier, and this repository's CI also scaffolds and tests an app against the published prerelease.
-- A release is a `v<version>` tag matching `package.json`. The release workflow runs `bun check`, `bun run lint` and `bun run test` before publishing; CI also runs the named Node and generated-app browser tiers.
+- `src/index.ts` resolves the installed engine's declared `shallot` bin, invokes `shallot create`, forwards its arguments, and returns its exit status. Keep the package version and exact engine dependency version equal.
+- `bun run test` runs the fast package-contract tests. The packed-consumer Node check is run by path; it packs the installed engine and this package, installs both tarballs, and compares default and first-person projects created by the shim and that engine's CLI.
+- The packed-consumer check has a 120-second test timeout. It runs against the installed engine dependency, so install the matching engine release before running it.
+- A release is a `v<version>` tag matching `package.json`. The release workflow runs `bun check`, `bun run lint` and `bun run test` before publishing; CI also runs the packed-consumer Node check.
