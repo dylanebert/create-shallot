@@ -1,6 +1,6 @@
 {
     "name": "create-shallot",
-    "version": "0.10.0-next.10",
+    "version": "0.10.0",
     "type": "module",
     "bin": "./src/index.ts",
     "files": [
@@ -25,7 +25,7 @@
         "test": "bun test --timeout=250"
     },
     "dependencies": {
-        "@dylanebert/shallot": "0.10.0-next.10"
+        "@dylanebert/shallot": "0.10.0"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.13",
