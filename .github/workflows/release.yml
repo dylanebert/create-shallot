@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,3 @@ jobs:
       - run: bun run test
       - name: Tag matches package version
         run: test "v$(jq -r .version package.json)" = "${{ github.ref_name }}"
-      - name: Publish
-        env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun publish --access public
